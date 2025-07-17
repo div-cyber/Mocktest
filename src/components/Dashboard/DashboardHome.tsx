@@ -9,7 +9,6 @@ import {
   Clock,
   Users,
   Target,
-  Award,
   Calendar,
   BarChart3,
   PieChart,
@@ -111,13 +110,6 @@ const DashboardHome: React.FC = () => {
     { subject: 'Physics', score: 78, tests: 3 },
     { subject: 'Chemistry', score: 92, tests: 4 },
     { subject: 'Biology', score: 88, tests: 2 }
-  ];
-
-  const achievements = [
-    { title: 'First Test Completed', icon: Trophy, earned: true },
-    { title: 'Score Above 80%', icon: Star, earned: averageScore > 80 },
-    { title: 'Week Streak', icon: Zap, earned: studyStreak >= 7 },
-    { title: 'Speed Demon', icon: Timer, earned: false }
   ];
 
   return (
@@ -340,39 +332,6 @@ const DashboardHome: React.FC = () => {
               <p className="text-sm text-gray-400">Start with your first adaptive mock test!</p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Achievements */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-          <Star className="h-5 w-5 mr-2 text-yellow-500" />
-          Achievements
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {achievements.map((achievement, index) => {
-            const Icon = achievement.icon;
-            return (
-              <div key={index} className={`p-4 rounded-lg border-2 transition-all ${
-                achievement.earned 
-                  ? 'border-yellow-300 bg-yellow-50' 
-                  : 'border-gray-200 bg-gray-50'
-              }`}>
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
-                  achievement.earned 
-                    ? 'bg-yellow-500 text-white' 
-                    : 'bg-gray-300 text-gray-500'
-                }`}>
-                  <Icon className="h-6 w-6" />
-                </div>
-                <p className={`text-sm font-medium text-center ${
-                  achievement.earned ? 'text-yellow-800' : 'text-gray-500'
-                }`}>
-                  {achievement.title}
-                </p>
-              </div>
-            );
-          })}
         </div>
       </div>
 

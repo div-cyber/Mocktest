@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, BookOpen, Users, User, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, EyeOff, BookOpen, Users, User, CheckCircle, XCircle, Mail } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -12,10 +13,12 @@ const Login: React.FC = () => {
     role: 'student' as 'student' | 'admin',
     section: 'engineering' as 'engineering' | 'medical'
   });
+  const [resetEmail, setResetEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const { login, signup } = useAuth();
+  const { login, signup, resetPassword } = useAuth();
 
   // Password validation
   const validatePassword = (password: string) => {
@@ -62,6 +65,28 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const success = await resetPassword(resetEmail);
+      if (success) {
+        setSuccess('Password reset email sent! Check your inbox.');
+        setShowForgotPassword(false);
+        setResetEmail('');
+      } else {
+        setError('Failed to send reset email. Please try again.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
@@ -75,6 +100,80 @@ const Login: React.FC = () => {
       {text}
     </div>
   );
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-500 to-green-500 rounded-full flex items-center justify-center">
+              <Mail className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="mt-6 text-3xl font-bold text-gray-900">
+              Reset your password
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Enter your email address and we'll send you a link to reset your password
+            </p>
+          </div>
+
+          <form className="mt-8 space-y-6" onSubmit={handleForgotPassword}>
+            <div className="bg-white rounded-lg shadow-lg p-6 space-y-4">
+              <div>
+                <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-700">
+                  Email Address
+                </label>
+                <input
+                  id="resetEmail"
+                  name="resetEmail"
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
+                  placeholder="Enter your email"
+                />
+              </div>
+
+              {error && (
+                <div className="text-red-600 text-sm text-center">{error}</div>
+              )}
+
+              {success && (
+                <div className="text-green-600 text-sm text-center">{success}</div>
+              )}
+
+              {success && (
+                <div className="text-green-600 text-sm text-center">{success}</div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  'Send Reset Email'
+                )}
+              </button>
+            </div>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(false)}
+                className="text-blue-600 hover:text-blue-500 text-sm font-medium transition-colors"
+              >
+                Back to sign in
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -224,6 +323,18 @@ const Login: React.FC = () => {
               )}
             </button>
           </div>
+
+          {isLogin && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-blue-600 hover:text-blue-500 text-sm font-medium transition-colors"
+              >
+                Forgot your password?
+              </button>
+            </div>
+          )}
 
           <div className="text-center">
             <button

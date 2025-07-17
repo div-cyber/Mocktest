@@ -1,26 +1,19 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import axios from 'axios';
+import { supabase } from '../lib/supabase';
+import type { Profile } from '../lib/supabase';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'student' | 'admin';
-  section: 'engineering' | 'medical';
-  avatar?: string;
-  gender?: 'male' | 'female' | 'other';
-  dateOfBirth?: string;
-  phone?: string;
-  bio?: string;
-}
+export type User = Profile;
 
 interface AuthContextType {
   user: User | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   signup: (userData: Omit<User, 'id'> & { password: string }) => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<boolean>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  resetPassword: (email: string) => Promise<boolean>;
+  trackLogin: (userId: string) => Promise<void>;
+  trackLogout: (userId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,70 +30,190 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const API_URL = 'http://localhost:5000/api';
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load user from backend if token exists
+  // Load user session on mount
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.get(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(res => setUser(res.data))
-      .catch(() => setUser(null));
-    }
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profile) {
+          setUser(profile);
+        }
+      }
+      setLoading(false);
+    };
+
+    getSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profile) {
+          setUser(profile);
+          await trackLogin(profile.id);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        if (user) {
+          await trackLogout(user.id);
+        }
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const trackLogin = async (userId: string) => {
+    try {
+      await supabase.functions.invoke('auth-tracking', {
+        body: {
+          action: 'login',
+          userId,
+          ipAddress: 'unknown', // Would be populated by edge function
+          userAgent: navigator.userAgent
+        }
+      });
+    } catch (error) {
+      console.error('Login tracking error:', error);
+    }
+  };
+
+  const trackLogout = async (userId: string) => {
+    try {
+      await supabase.functions.invoke('auth-tracking', {
+        body: {
+          action: 'logout',
+          userId
+        }
+      });
+    } catch (error) {
+      console.error('Logout tracking error:', error);
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
-      localStorage.setItem('token', res.data.token);
-      setUser(res.data.user);
-      return true;
-    } catch (err) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+        
+        if (profile) {
+          setUser(profile);
+          await trackLogin(profile.id);
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
       return false;
     }
   };
 
   const signup = async (userData: Omit<User, 'id'> & { password: string }): Promise<boolean> => {
     try {
-      await axios.post(`${API_URL}/auth/signup`, userData);
-      // Auto-login after signup
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            role: userData.role,
+            section: userData.section
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      // Auto-login after signup if email confirmation is disabled
       return await login(userData.email, userData.password);
-    } catch (err) {
+    } catch (error) {
+      console.error('Signup error:', error);
       return false;
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
+    supabase.auth.signOut();
   };
 
   const updateProfile = async (userData: Partial<User>): Promise<boolean> => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return false;
-      const res = await axios.put(`${API_URL}/users/me`, userData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser(res.data);
-      return true;
-    } catch (err) {
+      if (!user) return false;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(userData)
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setUser(data);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Profile update error:', error);
       return false;
     }
   };
 
-  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
-    // You can implement this endpoint in the backend and call it here
-    return false;
+  const resetPassword = async (email: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Password reset error:', error);
+      return false;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, updateProfile, changePassword }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      logout, 
+      signup, 
+      updateProfile, 
+      resetPassword,
+      trackLogin,
+      trackLogout
+    }}>
       {children}
     </AuthContext.Provider>
   );
