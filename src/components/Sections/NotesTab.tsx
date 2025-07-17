@@ -243,7 +243,6 @@ export default NotesTab;
           </div>
         ))}
       </div>
-    </div>
   );
 };
 
