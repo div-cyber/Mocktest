@@ -1,7 +1,16 @@
 import React from 'react';
 import { useApp } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Download, Calendar, User, Eye, FileText, Brain, Plus, Sparkles } from 'lucide-react';
+import {
+  Download,
+  Calendar,
+  User,
+  Eye,
+  FileText,
+  Brain,
+  Plus,
+  Sparkles
+} from 'lucide-react';
 import AINotesGenerator from './AINotesGenerator';
 
 interface NotesTabProps {
@@ -22,12 +31,10 @@ const NotesTab: React.FC<NotesTabProps> = ({ section }) => {
   const sectionAINotes = aiNotes.filter(note => note.section === section);
 
   const handleViewNote = (note: any) => {
-    // In a real app, this would open a modal or navigate to a detailed view
     alert(`Opening: ${note.title}\n\n${note.content}`);
   };
 
   const handleDownload = (note: any) => {
-    // In a real app, this would download the actual file
     alert(`Downloading: ${note.title}`);
   };
 
@@ -47,7 +54,10 @@ const NotesTab: React.FC<NotesTabProps> = ({ section }) => {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sectionNotes.map((note) => (
-          <div key={note.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+          <div
+            key={note.id}
+            className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+          >
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -132,7 +142,10 @@ const NotesTab: React.FC<NotesTabProps> = ({ section }) => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sectionAINotes.map((note) => (
-              <div key={note.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+              <div
+                key={note.id}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+              >
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
@@ -190,13 +203,6 @@ const NotesTab: React.FC<NotesTabProps> = ({ section }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Study Notes</h2>
-        <p className="text-gray-500">{sectionNotes.length} notes available</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Study Notes</h2>
         <div className="flex space-x-2">
           <button
             onClick={() => setActiveTab('regular')}
@@ -236,13 +242,6 @@ const NotesTab: React.FC<NotesTabProps> = ({ section }) => {
         />
       )}
     </div>
-  );
-};
-
-export default NotesTab;
-          </div>
-        ))}
-      </div>
   );
 };
 
