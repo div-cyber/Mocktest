@@ -18,7 +18,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { login, signup, resetPassword } = useAuth();
+  const { login, signup, resetPassword, checkEmailAuthorization } = useAuth();
 
   // Password validation
   const validatePassword = (password: string) => {
@@ -47,6 +47,16 @@ const Login: React.FC = () => {
       return;
     }
 
+    // Check email authorization for signup
+    if (!isLogin) {
+      const isAuthorized = await checkEmailAuthorization(formData.email);
+      if (!isAuthorized) {
+        setError('This email is not authorized for registration. Please contact the administrator.');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       let success;
       if (isLogin) {
@@ -56,7 +66,7 @@ const Login: React.FC = () => {
       }
 
       if (!success) {
-        setError('Authentication failed. Please try again.');
+        setError(isLogin ? 'Invalid email or password.' : 'Registration failed. Please try again.');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');

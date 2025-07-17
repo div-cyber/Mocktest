@@ -14,6 +14,8 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<boolean>;
   trackLogin: (userId: string) => Promise<void>;
   trackLogout: (userId: string) => Promise<void>;
+  checkEmailAuthorization: (email: string) => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -202,6 +204,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const checkEmailAuthorization = async (email: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-authorized-email', {
+        body: { email }
+      });
+
+      if (error) throw error;
+      return data.isAuthorized;
+    } catch (error) {
+      console.error('Email authorization check error:', error);
+      return false;
+    }
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Password change error:', error);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -212,7 +242,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       updateProfile, 
       resetPassword,
       trackLogin,
-      trackLogout
+      trackLogout,
+      checkEmailAuthorization,
+      changePassword
     }}>
       {children}
     </AuthContext.Provider>

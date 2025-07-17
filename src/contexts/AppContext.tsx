@@ -37,6 +37,22 @@ interface AppContextType {
     section: 'engineering' | 'medical';
     subject?: string;
   }) => Promise<any>;
+  generateAITest: (params: {
+    examType: 'engineering' | 'medical';
+    difficulty: 'easy' | 'medium' | 'hard';
+    driveLink?: string;
+    adaptiveLevel?: number;
+  }) => Promise<any>;
+  generateAINotes: (params: {
+    topic: string;
+    subject: string;
+    section: 'engineering' | 'medical';
+    difficulty: 'easy' | 'medium' | 'hard';
+    length: 'short' | 'medium' | 'detailed';
+    userId: string;
+  }) => Promise<any>;
+  fetchAINotes: (section?: string) => Promise<void>;
+  aiNotes: any[];
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -60,6 +76,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [aiNotes, setAINotes] = useState<any[]>([]);
 
   // Fetch chat messages from Supabase
   const fetchMessages = async (section?: string) => {
@@ -276,12 +293,77 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     }
   };
 
+  // Generate AI test using enhanced Gemini
+  const generateAITest = async (params: {
+    examType: 'engineering' | 'medical';
+    difficulty: 'easy' | 'medium' | 'hard';
+    driveLink?: string;
+    adaptiveLevel?: number;
+  }) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('gemini-ioe-medical', {
+        body: params
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error generating AI test:', error);
+      throw error;
+    }
+  };
+
+  // Generate AI notes
+  const generateAINotes = async (params: {
+    topic: string;
+    subject: string;
+    section: 'engineering' | 'medical';
+    difficulty: 'easy' | 'medium' | 'hard';
+    length: 'short' | 'medium' | 'detailed';
+    userId: string;
+  }) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('gemini-ai-notes', {
+        body: params
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error generating AI notes:', error);
+      throw error;
+    }
+  };
+
+  // Fetch AI notes
+  const fetchAINotes = async (section?: string) => {
+    try {
+      let query = supabase
+        .from('ai_notes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (section) {
+        query = query.eq('section', section);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      setAINotes(data || []);
+    } catch (error) {
+      console.error('Error fetching AI notes:', error);
+      setAINotes([]);
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       notes,
       mockTests,
       testResults,
       chatMessages,
+      aiNotes,
       loading,
       addNote,
       addMockTest,
@@ -292,7 +374,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       fetchMockTests,
       fetchTestResults,
       generateQuestions,
-      generateAnalytics
+      generateAnalytics,
+      generateAITest,
+      generateAINotes,
+      fetchAINotes
     }}>
       {children}
     </AppContext.Provider>

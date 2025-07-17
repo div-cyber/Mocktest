@@ -1,30 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { getFeedback, getAdaptiveLevel, TestPaper, MCQ } from '../../api/gemini';
+import { useApp } from '../../contexts/AppContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { X, Clock, CheckCircle, Brain, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface MockTestModalProps {
-  test: TestPaper;
+  test: any;
   onClose: () => void;
 }
 
 const MockTestModal: React.FC<MockTestModalProps> = ({ test, onClose }) => {
+  const { generateAnalytics, submitTestResult } = useApp();
+  const { user } = useAuth();
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: number }>({});
-  const [timeLeft, setTimeLeft] = useState(60 * 60); // Default 60 min, can be adjusted
+  const [timeLeft, setTimeLeft] = useState(test.timeLimit || 10800); // 3 hours default
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [adaptiveDifficulty, setAdaptiveDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [performanceStreak, setPerformanceStreak] = useState(0);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<any>(null);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
-
-  // Calculate total duration (sum of all subjects' marks as minutes, or set a fixed duration)
-  const totalDuration = test.subjects.reduce((sum, subj) => sum + subj.marks, 0);
-
-  useEffect(() => {
-    setTimeLeft(totalDuration * 60); // seconds
-  }, [totalDuration]);
 
   useEffect(() => {
     if (timeLeft > 0 && !isSubmitted) {
@@ -41,7 +37,7 @@ const MockTestModal: React.FC<MockTestModalProps> = ({ test, onClose }) => {
       const recentAnswers = Object.entries(answers).slice(-3);
       const correctCount = recentAnswers.filter(([questionId, answerIndex]) => {
         for (const subj of test.subjects) {
-          const question = subj.questions.find((q: any) => q.id === questionId);
+          const question = subj.questions.find((q: any) => q.id === questionId || `${subj.subject.toLowerCase()}_${questionId}` === q.id);
           if (question && question.correctAnswer === answerIndex) return true;
         }
         return false;
@@ -76,25 +72,58 @@ const MockTestModal: React.FC<MockTestModalProps> = ({ test, onClose }) => {
     setIsSubmitted(true);
     setShowResults(true);
     setLoadingFeedback(true);
-    // Calculate analytics
+    
+    if (!user) return;
+
     const allQuestions = test.subjects.flatMap(subj => subj.questions);
     const correctAnswers = allQuestions.filter((question: any) => 
-      answers[question.id] === question.correctAnswer
+      answers[question.id] !== undefined && answers[question.id] === question.correctAnswer
     ).length;
     const score = Math.round((correctAnswers / allQuestions.length) * 100);
-    const timeTaken = totalDuration - Math.floor(timeLeft / 60);
-    // Send analytics to Gemini for feedback
+    const timeTaken = Math.floor((test.timeLimit - timeLeft) / 60); // in minutes
+    
+    // Prepare answers for analytics
+    const answersForAnalytics = allQuestions.map((question: any) => ({
+      questionId: question.id,
+      selectedAnswer: answers[question.id] ?? -1,
+      correctAnswer: question.correctAnswer,
+      timeTaken: 90 // average time per question
+    }));
+
     try {
-      const fb = await getFeedback({
-        answers: Object.entries(answers).map(([questionId, selectedAnswer]) => ({ questionId, selectedAnswer })),
-        section: test.examType,
+      // Submit test result to database
+      await submitTestResult({
+        test_id: `ai_test_${Date.now()}`,
+        user_id: user.id,
         score,
-        timeTaken,
-        totalQuestions: allQuestions.length
+        total_questions: allQuestions.length,
+        time_taken: timeTaken,
+        answers: answers
       });
-      setFeedback(fb);
-    } catch {
-      setFeedback('Could not fetch feedback.');
+
+      // Generate analytics
+      const analyticsResult = await generateAnalytics({
+        testId: `ai_test_${Date.now()}`,
+        userId: user.id,
+        answers: answersForAnalytics,
+        totalScore: score,
+        totalQuestions: allQuestions.length,
+        timeTaken,
+        section: test.examType,
+        subject: 'Mixed'
+      });
+      
+      setAnalytics(analyticsResult.analytics);
+    } catch (error) {
+      console.error('Error submitting test:', error);
+      setAnalytics({
+        overallPerformance: {
+          grade: score >= 80 ? 'A' : score >= 60 ? 'B' : score >= 40 ? 'C' : 'D',
+          summary: `Scored ${score}% in ${timeTaken} minutes`
+        },
+        strengths: ['Completed the test'],
+        weaknesses: ['Need more practice']
+      });
     }
     setLoadingFeedback(false);
   };
@@ -125,9 +154,10 @@ const MockTestModal: React.FC<MockTestModalProps> = ({ test, onClose }) => {
   if (showResults) {
     const allQuestions = test.subjects.flatMap(subj => subj.questions);
     const correctAnswers = allQuestions.filter((question: any) => 
-      answers[question.id] === question.correctAnswer
+      answers[question.id] !== undefined && answers[question.id] === question.correctAnswer
     ).length;
     const score = Math.round((correctAnswers / allQuestions.length) * 100);
+    
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-96 overflow-y-auto">
@@ -155,7 +185,36 @@ const MockTestModal: React.FC<MockTestModalProps> = ({ test, onClose }) => {
                 {loadingFeedback ? (
                   <div className="text-purple-700">Loading feedback...</div>
                 ) : (
-                  <div className="text-purple-700 whitespace-pre-line">{feedback}</div>
+                  <div className="text-purple-700">
+                    {analytics ? (
+                      <div className="space-y-2">
+                        <p><strong>Grade:</strong> {analytics.overallPerformance?.grade}</p>
+                        <p><strong>Summary:</strong> {analytics.overallPerformance?.summary}</p>
+                        {analytics.strengths && (
+                          <div>
+                            <strong>Strengths:</strong>
+                            <ul className="list-disc list-inside ml-2">
+                              {analytics.strengths.slice(0, 3).map((strength: string, i: number) => (
+                                <li key={i}>{strength}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {analytics.weaknesses && (
+                          <div>
+                            <strong>Areas for Improvement:</strong>
+                            <ul className="list-disc list-inside ml-2">
+                              {analytics.weaknesses.slice(0, 3).map((weakness: string, i: number) => (
+                                <li key={i}>{weakness}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      'Analytics not available'
+                    )}
+                  </div>
                 )}
               </div>
             </div>
