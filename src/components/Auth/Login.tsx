@@ -18,9 +18,8 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { login, signup, resetPassword, checkEmailAuthorization } = useAuth();
+  const { login, signup, resetPassword } = useAuth(); // Removed checkEmailAuthorization
 
-  // Password validation
   const validatePassword = (password: string) => {
     const requirements = {
       length: password.length >= 8,
@@ -29,7 +28,6 @@ const Login: React.FC = () => {
       number: /\d/.test(password),
       special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
     };
-    
     const isValid = Object.values(requirements).every(req => req);
     return { requirements, isValid };
   };
@@ -45,16 +43,6 @@ const Login: React.FC = () => {
       setError('Password does not meet all requirements');
       setLoading(false);
       return;
-    }
-
-    // Check email authorization for signup
-    if (!isLogin) {
-      const isAuthorized = await checkEmailAuthorization(formData.email);
-      if (!isAuthorized) {
-        setError('This email is not authorized for registration. Please contact the administrator.');
-        setLoading(false);
-        return;
-      }
     }
 
     try {
@@ -140,33 +128,19 @@ const Login: React.FC = () => {
                   required
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
-                  placeholder="Enter your email"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring focus:border-blue-500 sm:text-sm"
                 />
               </div>
 
-              {error && (
-                <div className="text-red-600 text-sm text-center">{error}</div>
-              )}
-
-              {success && (
-                <div className="text-green-600 text-sm text-center">{success}</div>
-              )}
-
-              {success && (
-                <div className="text-green-600 text-sm text-center">{success}</div>
-              )}
+              {error && <div className="text-red-600 text-sm text-center">{error}</div>}
+              {success && <div className="text-green-600 text-sm text-center">{success}</div>}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
               >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  'Send Reset Email'
-                )}
+                {loading ? 'Sending...' : 'Send Reset Email'}
               </button>
             </div>
 
@@ -174,7 +148,7 @@ const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowForgotPassword(false)}
-                className="text-blue-600 hover:text-blue-500 text-sm font-medium transition-colors"
+                className="text-blue-600 hover:underline text-sm"
               >
                 Back to sign in
               </button>
@@ -186,176 +160,147 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-green-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-lg">
         <div className="text-center">
           <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-500 to-green-500 rounded-full flex items-center justify-center">
-            <BookOpen className="h-8 w-8 text-white" />
+            {isLogin ? <BookOpen className="h-8 w-8 text-white" /> : <Users className="h-8 w-8 text-white" />}
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            {isLogin ? 'Sign in to your account' : 'Create your account'}
+            {isLogin ? 'Sign in to your account' : 'Create a new account'}
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Access your mock tests and study materials
+            {isLogin ? 'Welcome back! Please enter your credentials.' : 'Join us by creating an account.'}
           </p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="bg-white rounded-lg shadow-lg p-6 space-y-4">
-            {!isLogin && (
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                  Full Name
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required={!isLogin}
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
-                  placeholder="Enter your full name"
-                />
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
-                placeholder="Enter your email"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Try: student@engineering.com, admin@medical.com
-              </p>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
-                </button>
-              </div>
-              
-              {!isLogin && formData.password && (
-                <div className="mt-2 p-3 bg-gray-50 rounded-md space-y-1">
-                  <p className="text-xs font-medium text-gray-700 mb-2">Password Requirements:</p>
-                  <PasswordRequirement met={passwordValidation.requirements.length} text="At least 8 characters" />
-                  <PasswordRequirement met={passwordValidation.requirements.uppercase} text="One uppercase letter" />
-                  <PasswordRequirement met={passwordValidation.requirements.lowercase} text="One lowercase letter" />
-                  <PasswordRequirement met={passwordValidation.requirements.number} text="One number" />
-                  <PasswordRequirement met={passwordValidation.requirements.special} text="One special character (!@#$%^&*)" />
-                </div>
-              )}
-            </div>
-
+          <div className="rounded-md shadow-sm -space-y-px">
             {!isLogin && (
               <>
-                <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                    Role
-                  </label>
-                  <select
-                    id="role"
-                    name="role"
-                    value={formData.role}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  >
-                    <option value="student">Student</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                <div className="mb-4">
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="Your full name"
+                    />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <User className="h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label htmlFor="section" className="block text-sm font-medium text-gray-700">
-                    Section
-                  </label>
-                  <select
-                    id="section"
-                    name="section"
-                    value={formData.section}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  >
-                    <option value="engineering">Engineering</option>
-                    <option value="medical">Medical</option>
-                  </select>
+                <div className="flex gap-4">
+                  <div className="w-1/2">
+                    <label htmlFor="role" className="block text-sm font-medium text-gray-700">Role</label>
+                    <select
+                      id="role"
+                      name="role"
+                      value={formData.role}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    >
+                      <option value="student">Student</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+
+                  <div className="w-1/2">
+                    <label htmlFor="section" className="block text-sm font-medium text-gray-700">Section</label>
+                    <select
+                      id="section"
+                      name="section"
+                      value={formData.section}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    >
+                      <option value="engineering">Engineering</option>
+                      <option value="medical">Medical</option>
+                    </select>
+                  </div>
                 </div>
               </>
             )}
 
-            {error && (
-              <div className="text-red-600 text-sm text-center">{error}</div>
+            <div className="mb-4">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleInputChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+
+            <div className="mb-4 relative">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={formData.password}
+                onChange={handleInputChange}
+                className="mt-1 block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5">
+                {showPassword ? (
+                  <EyeOff
+                    className="h-5 w-5 text-gray-500 cursor-pointer"
+                    onClick={() => setShowPassword(false)}
+                  />
+                ) : (
+                  <Eye
+                    className="h-5 w-5 text-gray-500 cursor-pointer"
+                    onClick={() => setShowPassword(true)}
+                  />
+                )}
+              </div>
+            </div>
+
+            {!isLogin && (
+              <div className="space-y-1">
+                <PasswordRequirement met={passwordValidation.requirements.length} text="At least 8 characters" />
+                <PasswordRequirement met={passwordValidation.requirements.uppercase} text="Contains uppercase letter" />
+                <PasswordRequirement met={passwordValidation.requirements.lowercase} text="Contains lowercase letter" />
+                <PasswordRequirement met={passwordValidation.requirements.number} text="Contains number" />
+                <PasswordRequirement met={passwordValidation.requirements.special} text="Contains special character" />
+              </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading || (!isLogin && !passwordValidation.isValid)}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                isLogin ? 'Sign In' : 'Sign Up'
-              )}
-            </button>
+            {error && <div className="text-red-600 text-sm text-center">{error}</div>}
           </div>
 
-          {isLogin && (
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setShowForgotPassword(true)}
-                className="text-blue-600 hover:text-blue-500 text-sm font-medium transition-colors"
-              >
-                Forgot your password?
-              </button>
-            </div>
-          )}
-
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-blue-600 hover:text-blue-500 text-sm font-medium transition-colors"
-            >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 transition-colors duration-300"
+          >
+            {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Sign Up'}
+          </button>
         </form>
+
+        <div className="flex justify-between items-center mt-4">
+          <button onClick={() => setShowForgotPassword(true)} className="text-sm text-blue-600 hover:underline">
+            Forgot Password?
+          </button>
+          <button
+            onClick={() => setIsLogin(!isLogin)}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+          </button>
+        </div>
       </div>
     </div>
   );
