@@ -33,7 +33,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
+    const GEMINI_API_KEY = 'AIzaSyAxetkUwp6bz0tRaZU28Go_0jKBFUEsm-k'
     if (!GEMINI_API_KEY) {
       throw new Error('GEMINI_API_KEY not configured')
     }

@@ -48,7 +48,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
+    const GEMINI_API_KEY = 'AIzaSyAxetkUwp6bz0tRaZU28Go_0jKBFUEsm-k'
     if (!GEMINI_API_KEY) {
       throw new Error('GEMINI_API_KEY not configured')
     }
@@ -65,7 +65,7 @@ serve(async (req: Request) => {
           { name: 'Chemistry', questions: 10, marks: 20, timePerQuestion: 90 },
           { name: 'English', questions: 5, marks: 10, timePerQuestion: 60 }
         ],
-        totalTime: 180, // 3 hours
+        totalTime: 180, // 3 hours (10800 seconds)
         syllabus: `
         Mathematics: Algebra, Trigonometry, Coordinate Geometry, Calculus, Statistics, Probability
         Physics: Mechanics, Heat, Light, Sound, Electricity, Magnetism, Modern Physics
@@ -81,7 +81,7 @@ serve(async (req: Request) => {
           { name: 'Physics', questions: 10, marks: 20, timePerQuestion: 90 },
           { name: 'English', questions: 5, marks: 10, timePerQuestion: 60 }
         ],
-        totalTime: 180, // 3 hours
+        totalTime: 180, // 3 hours (10800 seconds)
         syllabus: `
         Biology: Cell Biology, Genetics, Evolution, Ecology, Human Physiology, Plant Biology, Animal Biology
         Chemistry: Physical Chemistry, Inorganic Chemistry, Organic Chemistry, Biochemistry
@@ -119,7 +119,7 @@ serve(async (req: Request) => {
       examType,
       subjects: [],
       totalMarks: 0,
-      timeLimit: config.totalTime * 60, // convert to seconds
+      timeLimit: 10800, // 3 hours in seconds
       isAdaptive: true
     }
 
