@@ -79,4 +79,19 @@ export interface TestResult {
   answers: any
   analytics?: any
   completed_at: string
+  difficulty_progression?: any
+  question_timings?: any
+  adaptive_score?: number
+}
+
+export interface Chapter {
+  id: string
+  name: string
+  description: string
+  section: 'engineering' | 'medical'
+  subject: string
+  order_index: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }

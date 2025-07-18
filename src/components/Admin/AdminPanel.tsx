@@ -15,15 +15,26 @@ import {
   Target,
   Activity,
   Filter,
-  Download
+  Download,
+  List
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 const AdminPanel: React.FC = () => {
-  const { addNote, addMockTest, testResults, mockTests } = useApp();
+  const { addNote, addMockTest, testResults, mockTests, fetchNotes, fetchMockTests } = useApp();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'notes' | 'tests'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'notes' | 'tests' | 'chapters'>('overview');
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [showTestForm, setShowTestForm] = useState(false);
+  const [showChapterForm, setShowChapterForm] = useState(false);
+  const [chapters, setChapters] = useState<any[]>([]);
+  const [chapterForm, setChapterForm] = useState({
+    name: '',
+    description: '',
+    section: 'engineering' as 'engineering' | 'medical',
+    subject: '',
+    order_index: 0
+  });
 
   const [noteForm, setNoteForm] = useState({
     title: '',
@@ -180,8 +191,71 @@ const AdminPanel: React.FC = () => {
     { id: 'overview' as const, name: 'Overview', icon: BarChart3 },
     { id: 'students' as const, name: 'Students', icon: Users },
     { id: 'notes' as const, name: 'Notes', icon: BookOpen },
-    { id: 'tests' as const, name: 'Tests', icon: Trophy }
+    { id: 'tests' as const, name: 'Tests', icon: Trophy },
+    { id: 'chapters' as const, name: 'Chapters', icon: List }
   ];
+
+  // Fetch chapters
+  const fetchChapters = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('chapters')
+        .select('*')
+        .order('section, subject, order_index');
+      
+      if (error) throw error;
+      setChapters(data || []);
+    } catch (error) {
+      console.error('Error fetching chapters:', error);
+    }
+  };
+
+  // Add chapter
+  const handleChapterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const { error } = await supabase
+        .from('chapters')
+        .insert(chapterForm);
+
+      if (error) throw error;
+      
+      setChapterForm({
+        name: '',
+        description: '',
+        section: 'engineering',
+        subject: '',
+        order_index: 0
+      });
+      setShowChapterForm(false);
+      fetchChapters();
+    } catch (error) {
+      console.error('Error adding chapter:', error);
+    }
+  };
+
+  // Delete chapter
+  const handleDeleteChapter = async (id: string) => {
+    if (confirm('Are you sure you want to delete this chapter?')) {
+      try {
+        const { error } = await supabase
+          .from('chapters')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+        fetchChapters();
+      } catch (error) {
+        console.error('Error deleting chapter:', error);
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'chapters') {
+      fetchChapters();
+    }
+  }, [activeTab]);
 
   return (
     <div className="space-y-6">
@@ -807,6 +881,182 @@ const AdminPanel: React.FC = () => {
                 </form>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'chapters' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Chapter Management</h2>
+              <button
+                onClick={() => setShowChapterForm(true)}
+                className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add Chapter
+              </button>
+            </div>
+
+            {showChapterForm && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Add New Chapter</h3>
+                  <button
+                    onClick={() => setShowChapterForm(false)}
+                    className="p-2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleChapterSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Chapter Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={chapterForm.name}
+                        onChange={(e) => setChapterForm({ ...chapterForm, name: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Subject
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={chapterForm.subject}
+                        onChange={(e) => setChapterForm({ ...chapterForm, subject: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Section
+                      </label>
+                      <select
+                        value={chapterForm.section}
+                        onChange={(e) => setChapterForm({ ...chapterForm, section: e.target.value as 'engineering' | 'medical' })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                      >
+                        <option value="engineering">Engineering</option>
+                        <option value="medical">Medical</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Order Index
+                      </label>
+                      <input
+                        type="number"
+                        value={chapterForm.order_index}
+                        onChange={(e) => setChapterForm({ ...chapterForm, order_index: parseInt(e.target.value) })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={chapterForm.description}
+                      onChange={(e) => setChapterForm({ ...chapterForm, description: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowChapterForm(false)}
+                      className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Chapter
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Chapters List */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Chapter
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Subject
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Section
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Order
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {chapters.map((chapter) => (
+                      <tr key={chapter.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{chapter.name}</div>
+                            <div className="text-sm text-gray-500">{chapter.description}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {chapter.subject}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            chapter.section === 'engineering' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {chapter.section}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {chapter.order_index}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleDeleteChapter(chapter.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>
