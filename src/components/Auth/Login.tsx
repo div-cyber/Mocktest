@@ -18,7 +18,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const { login, signup, resetPassword } = useAuth(); // Removed checkEmailAuthorization
+  const { login, signup, resetPassword } = useAuth();
 
   const validatePassword = (password: string) => {
     const requirements = {

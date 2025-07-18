@@ -9,12 +9,11 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  signup: (userData: Omit<User, 'id'> & { password: string }) => Promise<boolean>;
+  signup: (userData: Omit<User, 'id' | 'created_at' | 'updated_at'> & { password: string }) => Promise<boolean>;
   updateProfile: (userData: Partial<User>) => Promise<boolean>;
   resetPassword: (email: string) => Promise<boolean>;
   trackLogin: (userId: string) => Promise<void>;
   trackLogout: (userId: string) => Promise<void>;
-  checkEmailAuthorization: (email: string) => Promise<boolean>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 }
 
@@ -31,7 +30,6 @@ export const useAuth = () => {
 interface AuthProviderProps {
   children: ReactNode;
 }
-
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -83,14 +81,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const trackLogin = async (userId: string) => {
     try {
-      await supabase.functions.invoke('auth-tracking', {
-        body: {
-          action: 'login',
-          userId,
-          ipAddress: 'unknown', // Would be populated by edge function
-          userAgent: navigator.userAgent
-        }
-      });
+      await supabase
+        .from('login_sessions')
+        .insert({
+          user_id: userId,
+          login_time: new Date().toISOString(),
+          ip_address: 'unknown',
+          user_agent: navigator.userAgent
+        });
     } catch (error) {
       console.error('Login tracking error:', error);
     }
@@ -98,12 +96,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const trackLogout = async (userId: string) => {
     try {
-      await supabase.functions.invoke('auth-tracking', {
-        body: {
-          action: 'logout',
-          userId
-        }
-      });
+      await supabase
+        .from('login_sessions')
+        .update({
+          logout_time: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .is('logout_time', null)
+        .order('login_time', { ascending: false })
+        .limit(1);
     } catch (error) {
       console.error('Logout tracking error:', error);
     }
@@ -138,7 +139,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signup = async (userData: Omit<User, 'id'> & { password: string }): Promise<boolean> => {
+  const signup = async (userData: Omit<User, 'id' | 'created_at' | 'updated_at'> & { password: string }): Promise<boolean> => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
@@ -146,7 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         options: {
           data: {
             name: userData.name,
-            role: userData.role,
+            role: userData.role || 'student',
             section: userData.section
           }
         }
@@ -154,7 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) throw error;
 
-      // Auto-login after signup if email confirmation is disabled
+      // Auto-login after signup
       return await login(userData.email, userData.password);
     } catch (error) {
       console.error('Signup error:', error);
@@ -204,20 +205,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const checkEmailAuthorization = async (email: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.functions.invoke('check-authorized-email', {
-        body: { email }
-      });
-
-      if (error) throw error;
-      return data.isAuthorized;
-    } catch (error) {
-      console.error('Email authorization check error:', error);
-      return false;
-    }
-  };
-
   const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
     try {
       const { error } = await supabase.auth.updateUser({
@@ -243,7 +230,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       resetPassword,
       trackLogin,
       trackLogout,
-      checkEmailAuthorization,
       changePassword
     }}>
       {children}
